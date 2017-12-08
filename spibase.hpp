@@ -10,11 +10,13 @@
  *
  * Derive a concrete implementation from this class.
  */
+#include "nrf_drv_spi.h"
 
 #ifndef SPIBASE_HPP_
 #define SPIBASE_HPP_
-
-#include "hw_config.h"
+#define SPI_TypeDef nrf_drv_spi_t
+//#include "nrf_drv_spi.h"
+//#include "nrf_spibase.h"
 
 /** STM32 SPI abstract base class. */
 class SPIBase
@@ -29,11 +31,12 @@ public:
    *
    * @param spi SPI interface (SPI1, SPI2, ...) which should be used
    */
+
   SPIBase(SPI_TypeDef *spi)
   {
     _spi = spi;
     _init = false;
-    _csGPIO = 0;
+//    _csGPIO = 0;
     _bits = 8;
     _prescaler = 0;
     _cpol = false;
@@ -52,9 +55,9 @@ public:
    * @param gpio GPIO port of /CS pin (GPIOA, GPIOB, ...)
    * @param csPin Pin of /CS
    */
-  void configureCS(GPIO_TypeDef *gpio, uint16_t csPin)
+  void configureCS(uint16_t csPin)
   {
-    _csGPIO = gpio;
+//    _csGPIO = gpio;
     _csPin = csPin;
   }
 
@@ -173,7 +176,7 @@ protected:
   virtual bool initClock() = 0;
 
   SPI_TypeDef* _spi; ///< SPI interface
-  GPIO_TypeDef* _csGPIO; ///< GPIO port of /CS pin
+//  GPIO_TypeDef* _csGPIO; ///< GPIO port of /CS pin
   uint16_t _csPin; ///< GPIO pin of /CS
   unsigned char _bits; ///< Number of bits per SPI transfer unit
   bool _cpol; ///< Clock polarity

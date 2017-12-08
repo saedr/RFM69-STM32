@@ -24,6 +24,7 @@
 #define RFM69_HPP_
 
 #include "spibase.hpp"
+#include "nrf_spibase.h"
 
 /** @addtogroup RFM69
  * @{
@@ -59,7 +60,7 @@ class RFM69
    * @{
    */
 public:
-  RFM69(SPIBase *spi, GPIO_TypeDef *csGPIO, uint16_t csPin, bool highPowerDevice = false);
+  RFM69(SPIBase *spi, uint16_t csPin, bool highPowerDevice = false);
   virtual ~RFM69();
 
   /**
@@ -68,9 +69,9 @@ public:
    * @param resetGPIO GPIO of /NRES signal (ie. GPIOA, GPIOB, ...)
    * @param resetPin Pin of /NRES signal (eg. GPIO_Pin_1)
    */
-  void setResetPin(GPIO_TypeDef *resetGPIO, uint16_t resetPin)
+  void setResetPin(uint16_t resetPin)
   {
-    _resetGPIO = resetGPIO;
+//    _resetGPIO = resetGPIO;
     _resetPin = resetPin;
   }
 
@@ -80,9 +81,9 @@ public:
    * @param dataGPIO GPIO of DIO2 signal (ie. GPIOA, GPIOB, ...)
    * @param dataPin Pin of DIO2 signal (eg. GPIO_Pin_1)
    */
-  void setDataPin(GPIO_TypeDef *dataGPIO, uint16_t dataPin)
+  void setDataPin(uint16_t dataPin)
   {
-    _dataGPIO = dataGPIO;
+//    _dataGPIO = dataGPIO;
     _dataPin = dataPin;
   }
 
@@ -180,11 +181,11 @@ private:
   int _receive(char* data, unsigned int dataLength);
 
   SPIBase* _spi;
-  GPIO_TypeDef* _csGPIO;
+//  GPIO_TypeDef* _csGPIO;
   uint16_t _csPin;
-  GPIO_TypeDef* _resetGPIO;
+//  GPIO_TypeDef* _resetGPIO;
   uint16_t _resetPin;
-  GPIO_TypeDef* _dataGPIO;
+//  GPIO_TypeDef* _dataGPIO;
   uint16_t _dataPin;
   bool _init;
   RFM69Mode _mode;

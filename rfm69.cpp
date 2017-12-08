@@ -23,17 +23,62 @@
 /** @addtogroup RFM69
  * @{
  */
-
+extern "C" {
+#include "nrf_delay.h"
+#include "bsp.h"
+}
 #include "rfm69.hpp"
-#include "tools/systimer.h"
+// #include <inttypes.h>
+// #include "nrf_delay.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include "spiUtil.h"
+#include "nrf.h"
+#include "nrf_gpio.h"
 
 #define TIMEOUT_MODE_READY    100 ///< Maximum amount of time until mode switch [ms]
 #define TIMEOUT_PACKET_SENT   100 ///< Maximum amount of time until packet must be sent [ms]
 #define TIMEOUT_CSMA_READY    500 ///< Maximum CSMA wait time for channel free detection [ms]
 #define CSMA_RSSI_THRESHOLD   -85 ///< If RSSI value is smaller than this, consider channel as free [dBm]
+
+
+
+void GPIO_SetBits(uint16_t GPIO_pin){
+	nrf_gpio_pin_set(GPIO_pin);
+}
+
+void GPIO_ResetBits(uint16_t GPIO_pin){
+	nrf_gpio_pin_clear(GPIO_pin);
+}
+
+
+volatile uint32_t uptime_ms = 0;
+
+extern "C" void SysTick_Handler(void)  {
+	uptime_ms++;
+}
+
+void mstimer_init(void)
+{
+	SysTick_Config(64000);
+	NVIC_EnableIRQ(SysTick_IRQn);
+
+}
+
+
+void delay_ms(unsigned ms)
+{
+  uint32_t start = uptime_ms;
+  while (uptime_ms - start < ms);
+}
+
+uint32_t mstimer_get(void)
+{
+  return uptime_ms;
+}
 
 /** RFM69 base configuration after init().
  *
@@ -47,9 +92,12 @@ static const uint8_t rfm69_base_config[][2] =
     {0x04, 0x80}, // RegBitrateLsb
     {0x05, 0x01}, // RegFdevMsb: 20 kHz
     {0x06, 0x48}, // RegFdevLsb
-    {0x07, 0xD9}, // RegFrfMsb: 868,15 MHz
-    {0x08, 0x09}, // RegFrfMid
-    {0x09, 0x9A}, // RegFrfLsb
+//    {0x07, 0xD9}, // RegFrfMsb: 868,15 MHz
+//    {0x08, 0x09}, // RegFrfMid
+//    {0x09, 0x9A}, // RegFrfLsb
+    {0x07, 0x6C}, // RegFrfMsb: 433 MHz
+    {0x08, 0x4F}, // RegFrfMid
+    {0x09, 0xF8}, // RegFrfLsb
     {0x18, 0x88}, // RegLNA: 200 Ohm impedance, gain set by AGC loop
     {0x19, 0x4C}, // RegRxBw: 25 kHz
     {0x2C, 0x00}, // RegPreambleMsb: 3 bytes preamble
@@ -76,13 +124,13 @@ static const uint8_t rfm69_base_config[][2] =
  * @param csPin Pin of /CS line (eg. GPIO_Pin_1)
  * @param highPowerDevice Set to true, if this is a RFM69Hxx device (default: false)
  */
-RFM69::RFM69(SPIBase *spi, GPIO_TypeDef *csGPIO, uint16_t csPin, bool highPowerDevice)
+RFM69::RFM69(SPIBase *spi, uint16_t csPin, bool highPowerDevice)
 {
   _spi = spi;
-  _csGPIO = csGPIO;
+//  _csGPIO = csGPIO;
   _csPin = csPin;
-  _resetGPIO = 0;
-  _resetPin = 0;
+//  _resetGPIO = 0;
+  _resetPin = 11;
   _init = false;
   _mode = RFM69_MODE_STANDBY;
   _highPowerDevice = highPowerDevice;
@@ -91,7 +139,7 @@ RFM69::RFM69(SPIBase *spi, GPIO_TypeDef *csGPIO, uint16_t csPin, bool highPowerD
   _ookEnabled = false;
   _autoReadRSSI = false;
   _dataMode = RFM69_DATA_MODE_PACKET;
-  _dataGPIO = 0;
+//  _dataGPIO = 0;
   _dataPin = 0;
   _highPowerSettings = false;
   _csmaEnabled = false;
@@ -110,18 +158,20 @@ RFM69::~RFM69()
  */
 void RFM69::reset()
 {
-  if (0 == _resetGPIO)
-    return;
+//  if (0 == _resetGPIO)
+//    return;
 
   _init = false;
 
   // generate reset impulse
-  GPIO_SetBits(_resetGPIO, _resetPin);
-  delay_ms(1);
-  GPIO_ResetBits(_resetGPIO, _resetPin);
+//  GPIO_SetBits(_resetGPIO, _resetPin);
+  GPIO_SetBits(_resetPin);
+  nrf_delay_ms(1);
+//  GPIO_ResetBits(_resetGPIO, _resetPin);
+  GPIO_ResetBits(_resetPin);
 
   // wait until module is ready
-  delay_ms(10);
+  nrf_delay_ms(10);
 
   _mode = RFM69_MODE_STANDBY;
 }
@@ -134,6 +184,8 @@ void RFM69::reset()
  */
 bool RFM69::init()
 {
+  ss_init(_csPin);
+  mstimer_init();
   // set base configuration
   setCustomConfig(rfm69_base_config, sizeof(rfm69_base_config) / 2);
 
@@ -258,7 +310,8 @@ void RFM69::writeRegister(uint8_t reg, uint8_t value)
  */
 void RFM69::chipSelect()
 {
-  GPIO_ResetBits(_csGPIO, _csPin);
+//  GPIO_ResetBits(_csGPIO, _csPin);
+  GPIO_ResetBits(_csPin);
 }
 
 /**
@@ -313,7 +366,8 @@ RFM69Mode RFM69::setMode(RFM69Mode mode)
  */
 void RFM69::chipUnselect()
 {
-  GPIO_SetBits(_csGPIO, _csPin);
+//  GPIO_SetBits(_csGPIO, _csPin);
+  GPIO_SetBits(_csPin);
 }
 
 /**
@@ -692,14 +746,17 @@ void RFM69::waitForPacketSent()
 void RFM69::continuousBit(bool bit)
 {
   // only allow this in continuous mode and if data pin was specified
-  if ((RFM69_DATA_MODE_PACKET == _dataMode) || (0 == _dataGPIO))
+//  if ((RFM69_DATA_MODE_PACKET == _dataMode) || (0 == _dataGPIO))
+  if (RFM69_DATA_MODE_PACKET == _dataMode)
     return;
 
   // send low or high bit
   if (false == bit)
-    GPIO_ResetBits(_dataGPIO, _dataPin);
+//    GPIO_ResetBits(_dataGPIO, _dataPin);
+  	GPIO_ResetBits(_dataPin);
   else
-    GPIO_SetBits(_dataGPIO, _dataPin);
+//    GPIO_SetBits(_dataGPIO, _dataPin);
+  	GPIO_SetBits(_dataPin);
 }
 
 /**
